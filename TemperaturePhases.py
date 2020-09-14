@@ -7,7 +7,7 @@ StimulusDur = 60;
 
 # Start temperature-controlled box
 arena = LoB.Arena();
-port_nat = '/dev/tty.usbmodem2411'; #Change according to computer
+port_nat = '/dev/ttyACM0'; #Change according to computer
 
 arena.Init(port_nat)
 arena.Message('Init done'); #Message will appear on LCD screen
