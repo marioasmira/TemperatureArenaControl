@@ -3,7 +3,7 @@ import LoB
 # Define duration of time pre-experimental phase to allow for recording to be 
 # started and define duration of each temperature phas
 PreRecording = 7; # Times defined in seconds
-StimulusDur = 60;
+StimulusDur = 5;
 
 # Start temperature-controlled box
 arena = LoB.Arena();
@@ -21,7 +21,7 @@ arena.Wait('Init...',5);
 #startTime = datestr(now,'yymmddHHMM');
 #GetChar;
 
-arena.Wait('Explore...',par.PreRecording); #During this moment the ring of light can be placed
+arena.Wait('Explore...',PreRecording); #During this moment the ring of light can be placed
                                          # and the recording can be started
 
 # Start the experimental block
