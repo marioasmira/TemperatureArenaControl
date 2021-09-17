@@ -21,7 +21,7 @@ class Arena:
                 print(msg + str(int(dur-round(time.time()-startTime))));
                 nextUpdate = time.time() + 1;
         # pinrt done when finished
-        print(msg + "done");
+        print(msg + " done");
 
     # function to add the attributes and open the serial port to the arduino
     def Init(self, dataPort):
