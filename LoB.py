@@ -50,6 +50,14 @@ class Arena:
             "LoB Arena interface code, version " + self.version + "\n"
         )  # initialization string
 
+    def Close(self):
+        try:
+            self.CheckSerialPort()
+        except PortError:
+            return
+        else:
+            self.serialHandle.close()
+
     # function to check if the serial port is open
     def CheckSerialPort(self):
         if (not self.serialHandle.is_open) or self.serialHandle == -1:
