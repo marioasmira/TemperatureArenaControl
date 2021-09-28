@@ -107,7 +107,10 @@ def main():
         print("Interrupted... Exiting.")
     except Exception:
         traceback.print_exc(file=sys.stdout)
-    sys.exit(0)
+    finally:
+        camera.close()
+        arena.close()
+        sys.exit(0)
 
 
 if __name__ == "__main__":
