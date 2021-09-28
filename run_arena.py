@@ -18,6 +18,7 @@ initial_temperature = 16  # default temperature - should be 16
 temperature_step = 2  # how much to  increase temperature per experimental step
 port_nat = "/dev/ttyACM0"  # Change according to computer
 file_save_location = ""  # where to save the video files
+have_preview = False  # if camera preview will be shown
 
 # ----------- Initialize Arena ----------------------
 # Start temperature-controlled box
@@ -44,12 +45,13 @@ time.sleep(2)  # wait 2 seconds for the camera to ajust to light conditions
 # stops here and waits for the user to press Enter
 input("Press Enter to start the experiment...")
 
-camera.start_preview()  # launches a window where the user can see what is being recorded
+if have_preview:
+    camera.start_preview()  # launches a window where the user can see what is being recorded
 camera.start_recording(file, format="h264")  # starts the recording
 exp_temp = initial_temperature  # start the experimental temperature at the same temp as initial
 
 # Start the experimental block
-for step in range(1, total_steps):
+for step in range(1, total_steps + 1):  # +1 because range ends before the second value
     if (step % 2) == 0:  # if even number
         arena.LED(1, 0)
     else:  # if uneven number
@@ -63,16 +65,19 @@ for step in range(1, total_steps):
     arena.SetTileTemp(
         exp_temp, exp_temp, exp_temp
     )  # changes temperatures to experimental temperature
+    # annotation on the video to track temperature afterwards
     annotation_string = name_input + ", T = " + str(exp_temp)
     camera.annotate_text = annotation_string
+
     arena.Wait(
-        str(step) + "step ", step_duration
+        "step: " + str(step) + ", temperature: " + str(exp_temp), step_duration
     )  # waits for the number of seconds in step_duration
 
 # ---------------- Reset ---------------------------------------
 # stop recording
 camera.stop_recording()  # stops recording
-camera.stop_preview()  # stops the window preview
+if have_preview:
+    camera.stop_preview()  # stops the window preview
 
 # reset leds and temperatures
 arena.LED(0, 0)  # turns off both leds
