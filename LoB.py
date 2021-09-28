@@ -1,18 +1,47 @@
 import time
 import serial
 import csv
+import sys
+
+from serial.serialutil import SerialException
+
+
+class PortError(Exception):
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):
+        return repr(self.message)
+
+
+class BoundsError(Exception):
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):
+        return repr(self.message)
 
 
 class Arena:
-    def __init__(self):
-        self.arduinoPort = ""
-        # string to hold the port location
-        self.serialHandle = -1
+    def __init__(self, dataPort, baseTemp):
+        self.arduinoPort = dataPort
+        try:
+            # string to hold the port location
+            self.serialHandle = serial.Serial(
+                self.arduinoPort, 115200, write_timeout=None, timeout=None
+            )
+        except SerialException as e:
+            print(
+                "ERROR - Could not open USB serial port.  Please check your port name and permissions.\nExiting program."
+            )
+            sys.exit()
         # serial port
         self.version = "0.1"
-        self.curTargetBaseTemp = 16
+        self.curTargetBaseTemp = baseTemp
+        self.SetBaseTemp(baseTemp)
         # base temperature for the tiles
-        self.curTargetTileTemp = {16, 16, 16}
+        self.curTargetTileTemp = {baseTemp, baseTemp, baseTemp}
+
         # current temperature of the tiles
         self.debug_on = (
             False  # to check if the arena is in debug mode (should not be by default)
@@ -21,8 +50,31 @@ class Arena:
             "LoB Arena interface code, version " + self.version + "\n"
         )  # initialization string
 
+    # function to check if the serial port is open
+    def CheckSerialPort(self):
+        if (not self.serialHandle.is_open) or self.serialHandle == -1:
+            raise PortError("USB serial port is not open. Call Arena.Init() first")
+
+    def GetVersion(self):
+        # check port
+        self.CheckSerialPort()
+
+        # send message
+        self.serialHandle.write(("VERSION\n").encode("utf-8"))
+
+        # receive and print reply
+        ser_bytes = self.serialHandle.readline()
+        decoded_bytes = str(ser_bytes[0 : len(ser_bytes) - 2].decode("utf-8"))
+        return decoded_bytes
+
     # function to display a message and wait dur amount of seconds
     def Wait(self, msg, dur):
+        try:
+            # check if the serial port is still available
+            self.CheckSerialPort()
+        except PortError as e:
+            print(e)
+
         # print messages each second for the duration of dur
         endTime = time.time() + dur
         startTime = time.time()
@@ -43,40 +95,32 @@ class Arena:
         # print done when finished
         print(msg + " done")
 
-    # function to add the attributes and open the serial port to the arduino
-    def Init(self, dataPort):
-        self.arduinoPort = dataPort
-        self.serialHandle = serial.Serial(
-            self.arduinoPort, 115200, write_timeout=None, timeout=None
-        )
-
-        # throw error if the serial port is unavailable
-        if True != self.serialHandle.is_open:
-            print(
-                "ERROR - Could not open USB serial port.  Please check your port name and permissions."
-            )
-            print("Exiting program.")
-            exit()
-
     # function to define the base temperature at which the temperature arena will work
     def SetBaseTemp(self, temp):
         # throw error if base temperature is outside the normal bounds
-        if temp < 5 or temp > 25:
-            raise Exception("Base temperature should be between 5 and 25 degrees.")
-        # check if the serial port is still available
-        self.CheckSerialPort()
+        try:
+            if temp < 5 or temp > 25:
+                raise BoundsError(
+                    "Base temperature should be between 5 and 25 degrees."
+                )
+            # check if the serial port is still available
+            self.CheckSerialPort()
+        except (BoundsError, PortError) as e:
+            print(e)
+
         # change relevant field in self
         self.curTargetBaseTemp = temp
         # send message to arduino
-        self.serialHandle.write(("setcoppertemp=" + str(temp) + "\n").encode("utf-8"))
-
-    # function to check if the serial port is open
-    def CheckSerialPort(self):
-        if self.serialHandle == -1:
-            raise Exception("Serial port is not open. Call Arena.Init() first")
+        self.SetTileTemp(temp, temp, temp)
 
     # function to send message to arduino
     def Message(self, msg):
+        try:
+            # check if the serial port is still available
+            self.CheckSerialPort()
+        except PortError as e:
+            print(e)
+
         self.serialHandle.write(("message=" + msg + "\n").encode("utf-8"))
         print("message=" + msg)
 
@@ -84,11 +128,15 @@ class Arena:
     def SetTileTemp(self, t1, t2, t3):
         tempList = [t1, t2, t3]
 
-        # throw error if outside the normal temperature bounds
-        if min(tempList) < 5 or max(tempList) > 60:
-            raise Exception("Tile temperature should be between 5 and 60 degrees")
-        # check if the serial port is still available
-        self.CheckSerialPort()
+        try:
+            # throw error if outside the normal temperature bounds
+            if min(tempList) < 5 or max(tempList) > 60:
+                raise BoundsError("Tile temperature should be between 5 and 60 degrees")
+            # check if the serial port is still available
+            self.CheckSerialPort()
+        except (BoundsError, PortError) as e:
+            print(e)
+
         # send tile temperatures to arduino
         self.serialHandle.write(
             ("settiletemp=" + str(t1) + "," + str(t2) + "," + str(t3) + "\n").encode(
@@ -98,10 +146,18 @@ class Arena:
 
     # function to check if the arduino is responding
     def AreYouThere(self):
-        # check if the serial port is still available
-        self.CheckSerialPort()
+        try:
+            # check if the serial port is still available
+            self.CheckSerialPort()
+        except PortError as e:
+            print(e)
+
         # Send message to arduino
-        self.Message("Yes I am")
+        self.serialHandle.write(("AREYOUTHERE\n").encode("utf-8"))
+        # receive and print reply
+        ser_bytes = self.serialHandle.readline()
+        decoded_bytes = str(ser_bytes[0 : len(ser_bytes) - 2].decode("utf-8"))
+        print(decoded_bytes)
 
     # function to output the serial information
     def GetHandle(self):
@@ -109,14 +165,22 @@ class Arena:
 
     # function to close and reset the serial connection
     def Stop(self):
+        try:
+            # check if the serial port is still available
+            self.CheckSerialPort()
+        except PortError as e:
+            print(e)
         if self.serialHandle != -1:
             self.serialHandle.close()
         self.serialHandle = -1
 
     # function to change the on/off postion of both LEDS in the temperature arena
     def LED(self, l1, l2):
-        # check if the serial port is still available
-        self.CheckSerialPort()
+        try:
+            # check if the serial port is still available
+            self.CheckSerialPort()
+        except PortError as e:
+            print(e)
         # send message to the arduino
         self.serialHandle.write(
             ("leds=" + str(l1) + "," + str(l2) + "\n").encode("utf-8")
@@ -126,7 +190,10 @@ class Arena:
     def Debug(self, turn_on):
         # if the wanted state is different
         if self.debug_on != turn_on:
-            # check if the serial port is still available
-            self.CheckSerialPort()
+            try:
+                # check if the serial port is still available
+                self.CheckSerialPort()
+            except PortError as e:
+                print(e)
             # send message to the arduino
             self.serialHandle.write(("DEBUG\n").encode("utf-8"))
