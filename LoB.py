@@ -42,10 +42,6 @@ class Arena:
         # base temperature for the tiles
         self.curTargetTileTemp = {baseTemp, baseTemp, baseTemp}
 
-        # current temperature of the tiles
-        self.debug_on = (
-            False  # to check if the arena is in debug mode (should not be by default)
-        )
         print(
             "LoB Arena interface code, version " + self.version + "\n"
         )  # initialization string
@@ -76,13 +72,7 @@ class Arena:
         return decoded_bytes
 
     # function to display a message and wait dur amount of seconds
-    def Wait(self, msg, dur):
-        try:
-            # check if the serial port is still available
-            self.CheckSerialPort()
-        except PortError as e:
-            print(e)
-
+    def Wait(self, msg, dur, record=False):
         # print messages each second for the duration of dur
         endTime = time.time() + dur
         startTime = time.time()
@@ -93,7 +83,13 @@ class Arena:
                 nextUpdate = time.time() + 1
 
             # collect serial data to file if in debug mode
-            if self.debug_on:
+            if record:
+                try:
+                    # check if the serial port is still available
+                    self.CheckSerialPort()
+                except PortError as e:
+                    print(e)
+
                 ser_bytes = self.serialHandle.readline()
                 decoded_bytes = str(ser_bytes[0 : len(ser_bytes) - 2].decode("utf-8"))
                 with open("arena_data.csv", "a") as f:
@@ -196,12 +192,23 @@ class Arena:
 
     # toggle debug to receive serial data
     def Debug(self, turn_on):
+        try:
+            # check if the serial port is still available
+            self.CheckSerialPort()
+        except PortError as e:
+            print(e)
+
+        # Send message to arduino
+        self.serialHandle.write(("GETDEBUG\n").encode("utf-8"))
+        # receive and print reply
+        ser_bytes = self.serialHandle.readline()
+        decoded_bytes = str(ser_bytes[0 : len(ser_bytes) - 2].decode("utf-8"))
+
+        # the status of the arduino
+        # if the message matches it means it is in debug mode
+        status = decoded_bytes == "DEBUG_ON"
+
         # if the wanted state is different
-        if self.debug_on != turn_on:
-            try:
-                # check if the serial port is still available
-                self.CheckSerialPort()
-            except PortError as e:
-                print(e)
+        if status != turn_on:
             # send message to the arduino
             self.serialHandle.write(("DEBUG\n").encode("utf-8"))
