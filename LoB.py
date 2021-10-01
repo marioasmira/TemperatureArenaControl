@@ -90,6 +90,7 @@ class Arena:
                 except PortError as e:
                     print(e)
 
+                self.Debug(True)
                 ser_bytes = self.serialHandle.readline()
                 decoded_bytes = str(ser_bytes[0 : len(ser_bytes) - 2].decode("utf-8"))
                 with open("arena_data.csv", "a") as f:
