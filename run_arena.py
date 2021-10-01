@@ -56,7 +56,7 @@ def main():
             camera.start_preview()  # launches a window where the user can see what is being recorded
         camera.start_recording(file, format="h264")  # starts the recording
         exp_temp = initial_temperature  # start the experimental temperature at the same temp as initial
-        camera.annotate_text = name_input + ", T = " + str(exp_temp)
+        camera.annotate_text = "T = " + str(exp_temp)
 
         # Start the experimental block
         for step in range(
@@ -76,11 +76,12 @@ def main():
                 exp_temp, exp_temp, exp_temp
             )  # changes temperatures to experimental temperature
             # annotation on the video to track temperature afterwards
-            annotation_string = name_input + ", T = " + str(exp_temp)
+            annotation_string = "T = " + str(exp_temp)
             camera.annotate_text = annotation_string
 
             arena.Wait(
-                "step: " + str(step) + ", temperature: " + str(exp_temp), step_duration
+                "step: " + str(step) + ", temperature: " + str(exp_temp) + " ",
+                step_duration,
             )  # waits for the number of seconds in step_duration
 
         # ---------------- Reset ---------------------------------------
@@ -109,7 +110,7 @@ def main():
         traceback.print_exc(file=sys.stdout)
     finally:
         camera.close()
-        arena.close()
+        arena.Close()
         sys.exit(0)
 
 
