@@ -87,15 +87,25 @@ class Arena:
                 try:
                     # check if the serial port is still available
                     self.CheckSerialPort()
+                    thermistor = serial.Serial(
+                        "/dev/ttyAMC1", 9600, write_timeout=None, timeout=None
+                    )
                 except PortError as e:
                     print(e)
 
-                self.Debug(True)
                 ser_bytes = self.serialHandle.readline()
                 decoded_bytes = str(ser_bytes[0 : len(ser_bytes) - 2].decode("utf-8"))
+
+                ser_bytes_temperature = self.serialHandle.readline()
+                decoded_bytes_temperature = str(
+                    ser_bytes_temperature[0 : len(ser_bytes_temperature) - 2].decode(
+                        "utf-8"
+                    )
+                )
+                output = decoded_bytes + "\t" + decoded_bytes_temperature
                 with open("arena_data.csv", "a") as f:
-                    writer = csv.writer(f, delimiter="\t")
-                    writer.writerow([time.time(), decoded_bytes])
+                    writer = csv.writer(f, delimiter="\t", quoting=csv.QUOTE_NONE)
+                    writer.writerow([output])
 
         # print done when finished
         print(msg + " done")
@@ -207,8 +217,7 @@ class Arena:
 
         # the status of the arduino
         # if the message matches it means it is in debug mode
-        status = decoded_bytes == "DEBUG_ON"
-
+        status = not (decoded_bytes == "DEBUG_OFF")
         # if the wanted state is different
         if status != turn_on:
             # send message to the arduino

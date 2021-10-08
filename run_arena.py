@@ -7,7 +7,7 @@
 import picamera  # for camera
 import os  # for conversion at the end
 import time  # for sleep
-import LoB  # for Arena class
+from arena import Arena  # for Arena class
 import sys, traceback
 
 
@@ -29,7 +29,7 @@ def main():
     try:
         # ----------- Initialize Arena ----------------------
         # Start temperature-controlled box
-        arena = LoB.Arena(port_nat, initial_temperature)  # starts the arena class
+        arena = Arena(port_nat, initial_temperature)  # starts the arena class
         arena.LED(0, 0)  # Both indicative red LEDs will be off
         arena.SetBaseTemp(
             initial_temperature
