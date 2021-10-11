@@ -52,6 +52,8 @@ class Arena:
         except PortError:
             return
         else:
+            self.Debug(False)
+            self.SetTileTemp(16, 16, 16)
             self.serialHandle.close()
 
     # function to check if the serial port is open
@@ -70,6 +72,23 @@ class Arena:
         ser_bytes = self.serialHandle.readline()
         decoded_bytes = str(ser_bytes[0 : len(ser_bytes) - 2].decode("utf-8"))
         return decoded_bytes
+
+    def read(self):
+        try:
+            # check if the serial port is still available
+            self.CheckSerialPort()
+        except PortError as e:
+            print(e)
+
+        ser_bytes = self.serialHandle.readline()
+        decoded_bytes = str(ser_bytes[0 : len(ser_bytes) - 2].decode("utf-8"))
+        float_bytes = []
+        for val in decoded_bytes.split("\t"):
+            try:
+                float_bytes.append(float(val))
+            except ValueError:
+                continue
+        return float_bytes
 
     # function to display a message and wait dur amount of seconds
     def Wait(self, msg, dur, record=False):

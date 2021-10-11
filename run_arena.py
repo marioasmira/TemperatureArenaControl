@@ -8,22 +8,57 @@ import picamera  # for camera
 import os  # for conversion at the end
 import time  # for sleep
 from arena import Arena  # for Arena class
+from thermistor import Thermistor
 import sys, traceback
+import csv
 
 
-def main():
+def wait(step, step_duration, exp_temp, sensors, record_data) -> None:
+    # print messages each second for the duration of dur
+    endTime = time.time() + step_duration
+    startTime = time.time()
+    nextUpdate = 0
+    while time.time() < endTime:
+        if nextUpdate < time.time():
+            print(
+                "Step: "
+                + str(step)
+                + ", temperature = "
+                + str(exp_temp)
+                + ", time left = "
+                + str(int(step_duration - round(time.time() - startTime)))
+            )
+            nextUpdate = time.time() + 1
+
+        # collect serial data to file if in debug mode
+        output = []
+        if record_data:
+            for sensor in sensors:
+                read = sensor.read()
+                output += read
+            # box_bytes = arena.Read()
+            # sensor_bytes = thermistor.read()
+            # output = box_bytes + sensor_bytes
+            with open("arena_data.csv", "a") as f:
+                writer = csv.writer(f, delimiter=",", quoting=csv.QUOTE_MINIMAL)
+                writer.writerow(output)
+
+
+def main() -> None:
     # -------------- Parameters --------------------------
-    step_duration = 60  # duration of each stimulus in seconds
-    accommodation_steps = 7  # number of stimulus for accomodation
-    experimental_steps = 15  # number of experimental stimulus
+    step_duration = 10  # duration of each stimulus in seconds
+    accommodation_steps = 1  # number of stimulus for accomodation
+    experimental_steps = 2  # number of experimental stimulus
     total_steps = accommodation_steps + experimental_steps  # total stimulus
     initial_temperature = 16  # default temperature - should be 16
     temperature_step = 2  # how much to  increase temperature per experimental step
     port_nat = "/dev/ttyACM0"  # Change according to computer
+    port_nat_thermistor = "/dev/ttyACM1"  # Change according to computer
+    record_data = True
     file_save_location = ""  # where to save the video files
-    have_preview = False  # if camera preview will be shown
+    have_preview = True  # if camera preview will be shown
     convert = True  # if the file should be converted at the end
-    cam_resolution = tuple(1920, 1080)  # camera resolution (needs to be a tuple)
+    cam_resolution = (1920, 1080)  # camera resolution (needs to be a tuple)
     cam_framerate = 30  # camera framerate
 
     try:
@@ -35,6 +70,10 @@ def main():
             initial_temperature
         )  # Minimum temperature for continuous cooling
         arena.Message("Init done")  # Message will appear on LCD screen
+        sensors = [arena]
+        if record_data:
+            thermistor = Thermistor(port_nat_thermistor)
+            sensors.append(thermistor)
 
         # --------- Initialize Camera ------------------------
         # initiate file name and camera object
@@ -79,10 +118,10 @@ def main():
             annotation_string = "T = " + str(exp_temp)
             camera.annotate_text = annotation_string
 
-            arena.Wait(
-                "step: " + str(step) + ", temperature: " + str(exp_temp) + " ",
-                step_duration,
-            )  # waits for the number of seconds in step_duration
+            wait(step, step_duration, exp_temp, sensors, record_data)
+
+            # print done when finished
+            print("Step: " + str(step) + ", temperature = " + str(exp_temp) + " done")
 
         # ---------------- Reset ---------------------------------------
         # stop recording
@@ -106,8 +145,6 @@ def main():
 
     except KeyboardInterrupt:
         print("Interrupted... Exiting.")
-    except Exception:
-        traceback.print_exc(file=sys.stdout)
     finally:
         camera.close()
         arena.Close()
