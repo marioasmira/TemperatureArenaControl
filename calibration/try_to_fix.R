@@ -409,7 +409,7 @@ ggplot(new_data_long, aes(x = analog_read_model, y = measure)) +
 
 
 ggplot(new_data_long, aes(x = analog_read_model, y = measure, color = tile)) +
-  geom_point()
+  geom_point(alpha = 0.1)
 
 
 # answer seems to be slope = -52.43235, and intercept = 55.13457
@@ -467,11 +467,12 @@ ggplot(new_data_long, aes(x = analog_read_model, y = measure)) +
 
 
 export_data <- data.frame(
-  read = new_data_long$analog_read_model,
-  measure = new_data_long$measure
+  read = new_data_long$val,
+  measure = new_data_long$measure,
+  tile = new_data_long$tile
 )
 
-write.csv(export_data, "export_data.csv", row.names=FALSE)
+write.csv(export_data, "calibrate/export_data.csv", row.names=FALSE, quote = F)
 
 
 # answer seems to be slope = -62.09515, and intercept = 62.65304
@@ -483,3 +484,367 @@ ggplot(result, aes(x = X14.0, y = X14.0.3)) +
   geom_smooth(method='lm', formula= y~x)+
   geom_abline(intercept = 0, slope = 1, color="red", linetype="dashed")
 
+
+
+# values taken from the c++ program
+a <- 0.0310214
+b <- -0.00515655
+c <- 2.61115e-05
+shmodel <- function(a, b, c, R){
+  return((1 / (a + b * log(R) + c * log(R)^3)))
+}
+new_data_long$resis <- 10000 / (2^bit_resolution / (new_data_long$val - 1.0))
+resists <- seq(min(new_data_long$resis), max(new_data_long$resis), length.out = 100)
+y <- shmodel(a, b, c, resists) - 273.15
+y <- exp(resists) + 50
+
+calc <- data.frame(x = y, y = resists)
+
+
+library(ggplot2)
+
+ggplot(calc, aes(x = x, y = y)) +
+  geom_line() +
+  geom_point(data = new_data_long, aes(x = measure, y = resis))
+
+ggplot(data = new_data_long, aes(x = measure, y = resis)) +
+  geom_point()
+
+m3 <- lm(measure ~ analog_read_model, data = new_data_long)
+summary(m3)
+
+library(Hmisc)
+precision <- 100
+max <- 1
+n_k <- 5
+x_values <- seq(0, max, length.out = precision)
+knots <- seq(0.05*max, 0.95*max, length.out = n_k)
+xx <- rcspline.eval(x_values, knots = knots, inclx = T)
+zero <- rep(1, precision)
+xx <- cbind(zero,xx)
+parametersL <- c(65.8341, -75.0247, 25.398, -7.38835, -138.323)
+parametersM <- c(67.0292, -78.3638, 25.4279, 6.90711, -175.801)
+parametersR <- c(67.4683, -77.527, 21.3805, 5.16503, -156.913)
+
+yL <- xx%*%parametersL
+yM <- xx%*%parametersM
+yR <- xx%*%parametersR
+
+calc <- data.frame(
+  x = x_values,
+  y = c(yL, yM, yR),
+  tile = c(rep("L", precision), rep("M", precision), rep("R", precision))
+)
+
+ggplot(calc, aes(x = x, y = y)) +
+  geom_point(data = new_data_long, aes(x = analog_read_model, y = measure)) +
+  geom_line(color = "red")
+
+ggplot(data = new_data_long, aes(x = analog_read_model, y = measure, color = tile)) +
+  geom_point(alpha = 0.05) +
+  geom_line(data = calc, aes(x = x, y = y, color = tile))
+
+
+
+
+SS <- read.csv("calibrate/SS.csv")
+SS$row <- seq(1:nrow(SS))
+plot(SS[,2], SS[,1])
+
+
+
+# second spline calibration ---------------------------------------------------------
+l_data <- read.csv("third spline calibration/arena_data.csv")
+m_data <- read.csv("second spline calibration/arena_data_M.csv")
+r_data <- read.csv("second spline calibration/arena_data_R.csv")
+
+new_data_long <- data.frame(
+  val = c(l_data$L_val, m_data$M_val, r_data$R_val),
+  target = c(l_data$L_target, m_data$M_target, r_data$R_target),
+  measure = c(l_data$temp, m_data$temp, r_data$temp),
+  tile = c(rep("L", nrow(l_data)), rep("M", nrow(m_data)), rep("R", nrow(r_data)))
+)
+
+
+new_data_long <- new_data_long[new_data_long$target > 14,]
+#transforming the analog read
+ggplot(new_data_long, aes(x = target, y = measure, color = tile)) +
+  geom_point(alpha = 0.1) + 
+  geom_smooth(method='lm', formula= y~x)+
+  geom_abline(intercept = 0, slope = 1, color="red", linetype="dashed")
+
+new_data_long <- na.omit(new_data_long)
+export_data <- data.frame(
+  read = new_data_long$val,
+  measure = new_data_long$measure,
+  tile = new_data_long$tile
+)
+
+write.csv(export_data, "calibrate/export_data.csv", row.names=FALSE, quote = F)
+
+t <- read.csv("/media/mario/ECFC-DFF4/arena_data.csv")
+
+
+ggplot(l_data, aes(x = L_target, y = temp)) +
+  geom_point(alpha = 0.1) + 
+  geom_smooth(method='lm', formula= y~x)+
+  geom_abline(intercept = 0, slope = 1, color="red", linetype="dashed")
+
+
+
+# second spline calibration ---------------------------------------------------------
+l_data <- read.csv("third spline calibration/arena_data.csv")
+
+
+new_data_long <- l_data[l_data$L_target > 14,]
+#transforming the analog read
+ggplot(new_data_long, aes(x = target, y = measure, color = tile)) +
+  geom_point(alpha = 0.1) + 
+  geom_smooth(method='lm', formula= y~x)+
+  geom_abline(intercept = 0, slope = 1, color="red", linetype="dashed")
+
+new_data_long <- na.omit(new_data_long)
+export_data <- data.frame(
+  read = new_data_long$L_val,
+  measure = new_data_long$temp,
+  tile = "L"
+)
+
+write.csv(export_data, "calibrate/export_data.csv", row.names=FALSE, quote = F)
+
+
+
+ggplot(l_data, aes(x = L_target, y = temp)) +
+  geom_point(alpha = 0.1) + 
+  geom_smooth(method='lm', formula= y~x)+
+  geom_abline(intercept = 0, slope = 1, color="red", linetype="dashed")
+
+
+
+# final values -------------------------------------------------------------
+
+l_data <- read.csv("third spline calibration/arena_data.csv")
+m_data <- read.csv("second spline calibration/arena_data_M.csv")
+r_data <- read.csv("second spline calibration/arena_data_R.csv")
+
+new_data_long <- data.frame(
+  val = c(l_data$L_val, m_data$M_val, r_data$R_val),
+  target = c(l_data$L_target, m_data$M_target, r_data$R_target),
+  measure = c(l_data$temp, m_data$temp, r_data$temp),
+  tile = c(rep("L", nrow(l_data)), rep("M", nrow(m_data)), rep("R", nrow(r_data)))
+)
+
+
+new_data_long <- new_data_long[new_data_long$target > 14,]
+#transforming the analog read
+ggplot(new_data_long, aes(x = target, y = measure, color = tile)) +
+  geom_point(alpha = 0.1) + 
+  geom_smooth(method='lm', formula= y~x)+
+  geom_abline(intercept = 0, slope = 1, color="red", linetype="dashed")
+
+new_data_long$diff <- new_data_long$measure - new_data_long$target
+
+ggplot(new_data_long, aes(x = target, y = diff, color = tile, group = tile)) +
+stat_summary(fun = mean,
+             geom = "pointrange",
+             fun.max = function(x) mean(x) + sd(x),
+             fun.min = function(x) mean(x) - sd(x))
+  geom_point(alpha = 0.05, position = position_dodge(width = 0.5))
+
+  
+
+# flir 2 ------------------------------------------------------------------
+
+data <- read.csv("flir calibration 2/arena_data (1).csv")
+plot(data$L_target)
+data$index <- NA
+index <- 1
+
+for(i in 1:(nrow(data)-1)){
+  if(data$L_target[i] <= data$L_target[i+1]){
+    data$index[i] <- index
+  } else{
+    index <- index + 1
+    data$index[i] <- index
+  }
+}
+plot(data$index)
+summary(data$index)
+data <- data[data$index > 6,]
+plot(data$index)
+plot(data$L_target)
+data <- data[data$index != 9,]
+data <- data[data$L_target > 16,]
+unique(data$index)
+l_data <- data[data$index == 7,]
+m_data <- data[data$index == 8,]
+r_data <- data[data$index == 10,]
+
+new_data_long <- data.frame(
+  val = c(l_data$L_val, m_data$M_val, r_data$R_val),
+  target = c(l_data$L_target, m_data$M_target, r_data$R_target),
+  measure = NA,
+  tile = c(rep("L", nrow(l_data)), rep("M", nrow(m_data)), rep("R", nrow(r_data)))
+)
+
+mea <- read.csv("flir calibration 2/Temp heatbox 271021.csv")
+
+for(i in 1:nrow(new_data_long)){
+  new_data_long$measure[i] <- mea[mea$temp == new_data_long$target[i] &
+                                    mea$tile == new_data_long$tile[i],]$measure
+}
+
+
+new_data_long <- na.omit(new_data_long)
+export_data <- data.frame(
+  read = new_data_long$val,
+  measure = new_data_long$measure,
+  tile = new_data_long$tile
+)
+
+write.csv(export_data, "calibrate/export_data.csv", row.names=FALSE, quote = F)
+
+new_data_long$analog_val <- analog_calc(new_data_long$val)
+lm_l <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "L",])
+summary(lm_l)
+lm_m <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "M",])
+summary(lm_m)
+lm_r <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "R",])
+summary(lm_r)
+
+ggplot(data = new_data_long, aes(x = analog_val, y = measure, color = tile)) +
+  geom_point(alpha = 0.05)
+
+
+
+library(Hmisc)
+precision <- 100
+max <- 1
+n_k <- 5
+x_values <- seq(0, max, length.out = precision)
+knots <- seq(0.05*max, 0.95*max, length.out = n_k)
+xx <- rcspline.eval(x_values, knots = knots, inclx = T)
+zero <- rep(1, precision)
+xx <- cbind(zero,xx)
+parametersL <- c(92.6445, -103.802, 9.42424, -26.7882, -101.608)
+parametersM <- c(93.9908, -108.338, 5.65328, 29.507, -348.009)
+parametersR <- c(96.6713, -113.69, 4.13182, 44.786, -318.983)
+
+yL <- xx%*%parametersL
+yM <- xx%*%parametersM
+yR <- xx%*%parametersR
+
+calc <- data.frame(
+  x = x_values,
+  y = c(yL, yM, yR),
+  tile = c(rep("L", precision), rep("M", precision), rep("R", precision))
+)
+
+ggplot(calc, aes(x = x, y = y)) +
+  geom_point(data = new_data_long, aes(x = analog_val, y = measure)) +
+  geom_line(color = "red")
+
+ggplot(data = new_data_long, aes(x = analog_val, y = measure, color = tile)) +
+  geom_point(alpha = 0.05) +
+  geom_line(data = calc, aes(x = x, y = y, color = tile)) +
+  xlim(0.35, 0.8) +
+  ylim(15, 50)
+
+
+# flir 3 ------------------------------------------------------------------
+
+
+data <- read.csv("flir calibration 3/arena_data.csv")
+plot(data$L_target)
+data$index <- NA
+index <- 1
+
+for(i in 1:(nrow(data)-1)){
+  if(data$L_target[i] <= data$L_target[i+1]){
+    data$index[i] <- index
+  } else{
+    index <- index + 1
+    data$index[i] <- index
+  }
+}
+plot(data$index)
+summary(data$index)
+data <- data[data$index == 1 | data$index == 4 | data$index == 7,]
+plot(data$index)
+plot(data$L_target)
+data <- data[data$L_target > 14,]
+data <- data[data$L_target < 48,]
+unique(data$index)
+l_data <- data[data$index == 1,]
+m_data <- data[data$index == 4,]
+r_data <- data[data$index == 7,]
+
+new_data_long <- data.frame(
+  val = c(l_data$L_val, m_data$M_val, r_data$R_val),
+  target = c(l_data$L_target, m_data$M_target, r_data$R_target),
+  measure = NA,
+  tile = c(rep("L", nrow(l_data)), rep("M", nrow(m_data)), rep("R", nrow(r_data)))
+)
+
+mea <- read.csv("flir calibration 3/Temp heatbox 281021.csv")
+
+for(i in 1:nrow(new_data_long)){
+  new_data_long$measure[i] <- mea[mea$temp == new_data_long$target[i] &
+                                    mea$tile == new_data_long$tile[i],]$measure
+}
+
+
+new_data_long <- na.omit(new_data_long)
+export_data <- data.frame(
+  read = new_data_long$val,
+  measure = new_data_long$measure,
+  tile = new_data_long$tile
+)
+
+write.csv(export_data, "calibrate/export_data.csv", row.names=FALSE, quote = F)
+
+new_data_long$analog_val <- analog_calc(new_data_long$val)
+lm_l <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "L",])
+summary(lm_l)
+lm_m <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "M",])
+summary(lm_m)
+lm_r <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "R",])
+summary(lm_r)
+
+ggplot(data = new_data_long, aes(x = analog_val, y = measure, color = tile)) +
+  geom_point(alpha = 0.05)
+
+
+
+library(Hmisc)
+precision <- 100
+max <- 1
+n_k <- 5
+x_values <- seq(0, max, length.out = precision)
+knots <- seq(0.05*max, 0.95*max, length.out = n_k)
+xx <- rcspline.eval(x_values, knots = knots, inclx = T)
+zero <- rep(1, precision)
+xx <- cbind(zero,xx)
+parametersL <- c(93.7487, -104.413, 6.54582, -33.6192, -100.089)
+parametersM <- c(94.5345, -108.241, 3.45671, 28.6225, -305.973)
+parametersR <- c(99.6374, -116.446, -4.51146, 61.102, -271.405)
+
+yL <- xx%*%parametersL
+yM <- xx%*%parametersM
+yR <- xx%*%parametersR
+
+calc <- data.frame(
+  x = x_values,
+  y = c(yL, yM, yR),
+  tile = c(rep("L", precision), rep("M", precision), rep("R", precision))
+)
+
+ggplot(calc, aes(x = x, y = y)) +
+  geom_point(data = new_data_long, aes(x = analog_val, y = measure)) +
+  geom_line(color = "red")
+
+ggplot(data = new_data_long, aes(x = analog_val, y = measure, color = tile)) +
+  geom_point(alpha = 0.05) +
+  geom_line(data = calc, aes(x = x, y = y, color = tile)) +
+  xlim(0.35, 0.8) +
+  ylim(15, 50)

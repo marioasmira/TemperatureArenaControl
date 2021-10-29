@@ -3,7 +3,7 @@ import LoB
 # Define duration of time pre-experimental phase to allow for recording to be
 # started and define duration of each temperature phas
 PreRecording = 30  # Times defined in seconds
-StimulusDur = 15
+StimulusDur = 60
 
 # Start temperature-controlled box
 arena = LoB.Arena()
