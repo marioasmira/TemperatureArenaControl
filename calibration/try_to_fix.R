@@ -848,3 +848,309 @@ ggplot(data = new_data_long, aes(x = analog_val, y = measure, color = tile)) +
   geom_line(data = calc, aes(x = x, y = y, color = tile)) +
   xlim(0.35, 0.8) +
   ylim(15, 50)
+
+
+
+# infrared thermo ---------------------------------------------------------
+
+
+
+data <- read.csv("infrared thermo/arena_data.csv")
+plot(data$L_target)
+data$index <- NA
+index <- 1
+
+for(i in 1:(nrow(data)-1)){
+  if(data$L_target[i] <= data$L_target[i+1]){
+    data$index[i] <- index
+  } else{
+    index <- index + 1
+    data$index[i] <- index
+  }
+}
+plot(data$index)
+summary(data$index)
+indexed <- data
+data <- indexed[indexed$index == 13 | indexed$index == 14,]
+plot(data$index)
+plot(data$L_target)
+data <- data[data$L_target > 14,]
+unique(data$index)
+# l_data <- data[data$index == 1,]
+# m_data <- data[data$index == 4,]
+# r_data <- data[data$index == 7,]
+
+new_data_long <- data.frame(
+  val = c(data$L_val, data$M_val, data$R_val),
+  target = c(data$L_target, data$M_target, data$R_target),
+  measure = NA,
+  tile = c(rep("L", nrow(data)), rep("M", nrow(data)), rep("R", nrow(data)))
+)
+
+mea <- read.csv("infrared thermo/Temp heatbox 011121.csv")
+
+for(i in 1:nrow(new_data_long)){
+  new_data_long$measure[i] <- mea[mea$temp == new_data_long$target[i] &
+                                    mea$tile == new_data_long$tile[i],]$measure
+}
+
+new_data_long <- new_data_long[!(new_data_long$measure > 40 & new_data_long$analog_val > 0.485),]
+new_data_long <- na.omit(new_data_long)
+export_data <- data.frame(
+  read = new_data_long$val,
+  measure = new_data_long$measure,
+  tile = new_data_long$tile
+)
+
+write.csv(export_data, "calibrate/export_data.csv", row.names=FALSE, quote = F)
+
+new_data_long$analog_val <- analog_calc(new_data_long$val)
+lm_l <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "L",])
+summary(lm_l)
+lm_m <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "M",])
+summary(lm_m)
+lm_r <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "R",])
+summary(lm_r)
+
+ggplot(data = new_data_long_t, aes(x = val, y = measure, color = tile)) +
+  geom_point(alpha = 0.05)
+
+
+
+library(Hmisc)
+precision <- 100
+max <- 1
+n_k <- 5
+x_values <- seq(0, max, length.out = precision)
+knots <- seq(0.05*max, 0.95*max, length.out = n_k)
+xx <- rcspline.eval(x_values, knots = knots, inclx = T)
+zero <- rep(1, precision)
+xx <- cbind(zero,xx)
+parametersL <- c(79.4308, -89.4651, -0.187081, 1.64607, 3.95824)
+parametersM <- c(80.9609, -92.0967, -0.222253, 1.49366, 1.76105)
+parametersR <- c(80.5252, -91.2008, -0.372707, 2.21842, 3.83658)
+
+yL <- xx%*%parametersL
+yM <- xx%*%parametersM
+yR <- xx%*%parametersR
+
+calc <- data.frame(
+  x = x_values,
+  y = c(yL, yM, yR),
+  tile = c(rep("L", precision), rep("M", precision), rep("R", precision))
+)
+
+ggplot(calc, aes(x = x, y = y)) +
+  geom_point(data = new_data_long, aes(x = analog_val, y = measure)) +
+  geom_line(color = "red")
+
+ggplot(data = new_data_long, aes(x = analog_val, y = measure, color = tile)) +
+  geom_point(alpha = 0.05) +
+  geom_line(data = calc, aes(x = x, y = y, color = tile)) +
+  xlim(0.35, 0.8) +
+  ylim(15, 50)
+
+
+# infrared thermo2 ---------------------------------------------------------
+
+
+
+data <- read.csv("infrared thermo 2/arena_data.csv")
+plot(data$L_target)
+data$index <- NA
+index <- 1
+
+for(i in 1:(nrow(data)-1)){
+  if(data$L_target[i] <= data$L_target[i+1]){
+    data$index[i] <- index
+  } else{
+    index <- index + 1
+    data$index[i] <- index
+  }
+}
+plot(data$index)
+summary(data$index)
+indexed <- data
+data <- indexed[indexed$index == 2,]
+plot(data$index)
+plot(data$L_target)
+data <- data[data$L_target > 14,]
+unique(data$index)
+# l_data <- data[data$index == 1,]
+# m_data <- data[data$index == 4,]
+# r_data <- data[data$index == 7,]
+
+new_data_long <- data.frame(
+  val = c(data$L_val, data$M_val, data$R_val),
+  target = c(data$L_target, data$M_target, data$R_target),
+  measure = NA,
+  tile = c(rep("L", nrow(data)), rep("M", nrow(data)), rep("R", nrow(data)))
+)
+
+mea <- read.csv("infrared thermo 2/Temp heatbox 031121.csv")
+
+for(i in 1:nrow(new_data_long)){
+  new_data_long$measure[i] <- mea[mea$temp == new_data_long$target[i] &
+                                    mea$tile == new_data_long$tile[i],]$measure
+}
+
+#new_data_long <- new_data_long[!(new_data_long$measure > 40 & new_data_long$analog_val > 0.485),]
+new_data_long <- new_data_long[2:nrow(new_data_long),]
+new_data_long <- na.omit(new_data_long)
+export_data <- data.frame(
+  read = new_data_long$val,
+  measure = new_data_long$measure,
+  tile = new_data_long$tile
+)
+
+write.csv(export_data, "calibrate/export_data.csv", row.names=FALSE, quote = F)
+
+new_data_long$analog_val <- analog_calc(new_data_long$val)
+lm_l <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "L",])
+summary(lm_l)
+lm_m <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "M",])
+summary(lm_m)
+lm_r <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "R",])
+summary(lm_r)
+
+ggplot(data = new_data_long, aes(x = val, y = measure, color = tile)) +
+  geom_point(alpha = 0.05)
+
+
+
+library(Hmisc)
+precision <- 100
+max <- 1
+n_k <- 5
+x_values <- seq(0, max, length.out = precision)
+knots <- seq(0.05*max, 0.95*max, length.out = n_k)
+xx <- rcspline.eval(x_values, knots = knots, inclx = T)
+zero <- rep(1, precision)
+xx <- cbind(zero,xx)
+# parametersL <- c(80.8773, -93.5178, 0.418203, 25.94, 23.1023)
+# parametersM <- c(83.1577, -97.4657, -0.041277, 31.2212, 21.8266)
+# parametersR <- c(83.628, -98.3216, 0.0269609, 29.0856, 26.5983)
+parametersL <- c(86.4084, -107.371, -3.69321, 127.656, -393.183)
+parametersM <- c(89.0889, -111.768, -7.23342, 144.546, -411.263)
+parametersR <- c(90.8136, -116.597, -3.05034, 154.133, -501.815)
+
+yL <- xx%*%parametersL
+yM <- xx%*%parametersM
+yR <- xx%*%parametersR
+
+calc <- data.frame(
+  x = x_values,
+  y = c(yL, yM, yR),
+  tile = c(rep("L", precision), rep("M", precision), rep("R", precision))
+)
+
+ggplot(calc, aes(x = x, y = y)) +
+  geom_point(data = new_data_long, aes(x = analog_val, y = measure)) +
+  geom_line(color = "red")
+
+ggplot(data = new_data_long, aes(x = analog_val, y = measure, color = tile)) +
+  geom_point(alpha = 0.05) +
+  geom_line(data = calc, aes(x = x, y = y, color = tile)) +
+  xlim(0.25, 0.8) +
+  ylim(13, 53)
+
+
+# infrared thermo3 ---------------------------------------------------------
+
+data <- read.csv("infrared thermo 3/arena_data.csv")
+plot(data$L_target)
+data$index <- NA
+index <- 1
+
+for(i in 1:(nrow(data)-1)){
+  if(data$L_target[i] <= data$L_target[i+1]){
+    data$index[i] <- index
+  } else{
+    index <- index + 1
+    data$index[i] <- index
+  }
+}
+plot(data$index)
+summary(data$index)
+indexed <- data
+data <- indexed[indexed$index == 3,]
+plot(data$index)
+plot(data$L_target)
+data <- data[data$L_target > 14,]
+unique(data$index)
+# l_data <- data[data$index == 1,]
+# m_data <- data[data$index == 4,]
+# r_data <- data[data$index == 7,]
+
+new_data_long <- data.frame(
+  val = c(data$L_val, data$M_val, data$R_val),
+  target = c(data$L_target, data$M_target, data$R_target),
+  measure = NA,
+  tile = c(rep("L", nrow(data)), rep("M", nrow(data)), rep("R", nrow(data)))
+)
+
+mea <- read.csv("infrared thermo 3/Temp heatbox 031121_2.csv")
+
+for(i in 1:nrow(new_data_long)){
+  new_data_long$measure[i] <- mea[mea$temp == new_data_long$target[i] &
+                                    mea$tile == new_data_long$tile[i],]$measure
+}
+
+new_data_long <- na.omit(new_data_long)
+export_data <- data.frame(
+  read = new_data_long$val,
+  measure = new_data_long$measure,
+  tile = new_data_long$tile
+)
+write.csv(export_data, "calibrate/export_data2.csv", row.names=FALSE, quote = F)
+
+previous <- read.csv("calibrate/export_data1.csv")
+export_data <- rbind(export_data, previous)
+#different name to append to the previoous one
+write.csv(export_data, "calibrate/export_data.csv", row.names=FALSE, quote = F)
+
+new_data_long$analog_val <- analog_calc(new_data_long$val)
+lm_l <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "L",])
+summary(lm_l)
+lm_m <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "M",])
+summary(lm_m)
+lm_r <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "R",])
+summary(lm_r)
+
+ggplot(data = new_data_long, aes(x = val, y = measure, color = tile)) +
+  geom_point(alpha = 0.05)
+
+
+
+library(Hmisc)
+precision <- 100
+max <- 1
+n_k <- 5
+x_values <- seq(0, max, length.out = precision)
+knots <- seq(0.05*max, 0.95*max, length.out = n_k)
+xx <- rcspline.eval(x_values, knots = knots, inclx = T)
+zero <- rep(1, precision)
+xx <- cbind(zero,xx)
+parametersL <- c(82.4619, -96.779, -4.99532, 44.9481, 2.93922)
+parametersM <- c(84.0365, -99.5785, -3.0657, 42.1866, -7.10719)
+parametersR <- c(84.2078, -100.44, -0.953949, 39.9038, 3.18809)
+
+yL <- xx%*%parametersL
+yM <- xx%*%parametersM
+yR <- xx%*%parametersR
+
+calc <- data.frame(
+  x = x_values,
+  y = c(yL, yM, yR),
+  tile = c(rep("L", precision), rep("M", precision), rep("R", precision))
+)
+
+ggplot(calc, aes(x = x, y = y)) +
+  geom_point(data = new_data_long, aes(x = analog_val, y = measure)) +
+  geom_line(color = "red")
+
+ggplot(data = new_data_long, aes(x = analog_val, y = measure, color = tile)) +
+  geom_point(alpha = 0.05) +
+  geom_line(data = calc, aes(x = x, y = y, color = tile)) +
+  xlim(0.25, 0.8) +
+  ylim(14, 55)
