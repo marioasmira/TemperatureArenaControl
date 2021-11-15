@@ -6,7 +6,7 @@ import sys
 import csv
 from os import walk
 
-
+# exception for when the program can't open a file
 class FileError(Exception):
     def __init__(self, message):
         self.message = message
@@ -14,7 +14,7 @@ class FileError(Exception):
     def __str__(self):
         return repr(self.message)
 
-
+# function to transform seconds into hour, minute and second
 def split_time(duration):
     sec_value = duration % (24 * 3600)
     hour_value = sec_value // 3600
@@ -42,6 +42,7 @@ def digit_match(video_file, data_list, digit_numbers, gray_digits, positions):
         if not sucess:
             break
 
+        # find the correct positions for where the digits are
         short_frame = frame[
             positions["y"] : positions["y"] + positions["h"],
             positions["x"] : positions["x"] + positions["w"],
@@ -58,6 +59,7 @@ def digit_match(video_file, data_list, digit_numbers, gray_digits, positions):
         first_match = []
         second_match = []
 
+        # matches each small part of the frame against the all the digits 
         for d in gray_digits:
             result = cv2.matchTemplate(image_1, d, cv2.TM_CCOEFF_NORMED)
             (minVal, maxVal, minLoc, maxLoc) = cv2.minMaxLoc(result)
