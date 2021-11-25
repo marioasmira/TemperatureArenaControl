@@ -1257,3 +1257,106 @@ ggplot(data = new_data_long, aes(x = analog_val, y = measure, color = tile)) +
   geom_line(data = calc, aes(x = x, y = y, color = tile)) +
   xlim(0.25, 0.8) +
   ylim(14, 55)
+
+
+
+# millionth ---------------------------------------------------------------
+
+data <- read.csv("millionth calibration/arena_data.csv")
+plot(data$L_target)
+data$index <- NA
+index <- 1
+
+for(i in 1:(nrow(data)-1)){
+  if(data$L_target[i] <= data$L_target[i+1]){
+    data$index[i] <- index
+  } else{
+    index <- index + 1
+    data$index[i] <- index
+  }
+}
+plot(data$index)
+summary(data$index)
+indexed <- data
+data <- indexed[indexed$index == 11,]
+plot(data$index)
+plot(data$L_target)
+data <- data[data$L_target > 14,]
+data <- data[2:nrow(data),]
+unique(data$index)
+# l_data <- data[data$index == 1,]
+# m_data <- data[data$index == 4,]
+# r_data <- data[data$index == 7,]
+
+new_data_long <- data.frame(
+  val = c(data$L_val, data$M_val, data$R_val),
+  target = c(data$L_target, data$M_target, data$R_target),
+  measure = NA,
+  tile = c(rep("L", nrow(data)), rep("M", nrow(data)), rep("R", nrow(data)))
+)
+
+mea <- read.csv("millionth calibration/Temp heatbox 241121.csv")
+
+for(i in 1:nrow(new_data_long)){
+  new_data_long$measure[i] <- mea[mea$temp == new_data_long$target[i] &
+                                    mea$tile == new_data_long$tile[i],]$measure
+}
+
+new_data_long <- na.omit(new_data_long)
+export_data <- data.frame(
+  read = new_data_long$val,
+  measure = new_data_long$measure,
+  tile = new_data_long$tile
+)
+write.csv(export_data, "calibrate/export_data.csv", row.names=FALSE, quote = F)
+
+previous <- read.csv("calibrate/export_data1.csv")
+export_data <- rbind(export_data, previous)
+#different name to append to the previoous one
+write.csv(export_data, "calibrate/export_data.csv", row.names=FALSE, quote = F)
+
+new_data_long$analog_val <- analog_calc(new_data_long$val)
+lm_l <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "L",])
+summary(lm_l)
+lm_m <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "M",])
+summary(lm_m)
+lm_r <- lm(measure ~ analog_val, data = new_data_long[new_data_long$tile == "R",])
+summary(lm_r)
+
+ggplot(data = new_data_long, aes(x = val, y = measure, color = tile)) +
+  geom_point(alpha = 0.05)
+
+
+
+library(Hmisc)
+precision <- 100
+max <- 1
+n_k <- 5
+x_values <- seq(0, max, length.out = precision)
+knots <- seq(0.05*max, 0.95*max, length.out = n_k)
+xx <- rcspline.eval(x_values, knots = knots, inclx = T)
+zero <- rep(1, precision)
+xx <- cbind(zero,xx)
+parametersL <- c(90.5645, -110.825, -11.1511, 138.974, -380.393)
+parametersM <- c(90.6486, -112.128, -10.443, 145.702, -432.13)
+parametersR <- c(91.4241, -115.468, -2.89886, 145.405, -511.608)
+
+yL <- xx%*%parametersL
+yM <- xx%*%parametersM
+yR <- xx%*%parametersR
+
+calc <- data.frame(
+  x = x_values,
+  y = c(yL, yM, yR),
+  tile = c(rep("L", precision), rep("M", precision), rep("R", precision))
+)
+
+ggplot(calc, aes(x = x, y = y)) +
+  geom_point(data = new_data_long, aes(x = analog_val, y = measure)) +
+  geom_line(color = "red")
+
+ggplot(data = new_data_long, aes(x = analog_val, y = measure, color = tile)) +
+  geom_point(alpha = 0.05) +
+  geom_line(data = calc, aes(x = x, y = y, color = tile)) +
+  xlim(0.25, 0.8) +
+  ylim(14, 55)
